@@ -350,6 +350,44 @@ typedef CGPoint KIFDisplacement;
     }];
 }
 
++ (id)stepToDirectlySetText:(NSString *)text intoViewWithAccessibilityLabel:(NSString *)label;
+{
+    NSString *description = [NSString stringWithFormat:@"Set the text property to \"%@\" on the view with accessibility label \"%@\"", text, label];
+    return [self stepWithDescription:description executionBlock:^(KIFTestStep *step, NSError **error) {
+        UIAccessibilityElement *element = [self _accessibilityElementWithLabel:label accessibilityValue:nil tappable:YES traits:UIAccessibilityTraitNone error:error];
+        if (!element) {
+            return KIFTestStepResultWait;
+        }
+        
+        UIView *view = [UIAccessibilityElement viewContainingAccessibilityElement:element];
+        KIFTestWaitCondition(view, error, @"Cannot find view with accessibility label \"%@\"", label);
+        
+        id textThing = (id)view;
+        if ([textThing respondsToSelector:@selector(text)]) {
+            [textThing setText:text];
+            NSString *actual = [textThing performSelector:@selector(text)];
+            KIFTestCondition([actual isEqualToString:text], error, @"Failed to actually enter text \"%@\" in field; instead, it was \"%@\"", text, actual);
+            
+            if ([textThing isKindOfClass:[UITextView class]]) {
+                if ([[(UITextView *)textThing delegate] respondsToSelector:@selector(textViewDidChange:)]) {
+                    [[(UITextView *)textThing delegate] performSelector:@selector(textViewDidChange:) withObject:textThing];
+                }
+                [[NSNotificationCenter defaultCenter] postNotificationName:UITextViewTextDidChangeNotification object:textThing];
+            }
+            else if ([textThing isKindOfClass:[UITextField class]]) {
+                if ([[(UITextField *)textThing delegate] respondsToSelector:@selector(textFieldDidEndEditing:)]) {
+                    [[(UITextField *)textThing delegate] performSelector:@selector(textFieldDidEndEditing:) withObject:textThing];
+                }
+                [[NSNotificationCenter defaultCenter] postNotificationName:UITextFieldTextDidEndEditingNotification object:textThing];
+            }
+        } else {
+            KIFTestCondition(NO, error, @"Failed to find key for character \"%@\"", text);
+        }
+        
+        return KIFTestStepResultSuccess;
+    }];
+}
+
 + (id)stepToEnterText:(NSString *)text intoViewWithAccessibilityLabel:(NSString *)label;
 {
     return [self stepToEnterText:text intoViewWithAccessibilityLabel:label traits:UIAccessibilityTraitNone expectedResult:nil];

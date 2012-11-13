@@ -328,6 +328,16 @@ typedef KIFTestStepResult (^KIFTestStepExecutionBlock)(KIFTestStep *step, NSErro
 + (id)stepToTapScreenAtPoint:(CGPoint)screenPoint;
 
 /*!
+ @method stepToDirectlySetText:intoViewWithAccessibilityLabel:
+ @abstract A step that sets the text property of a particular view in the view hierarchy directly, rather than typing through the keyboard.
+ @discussion Most of the time you will want to use stepToEnterText:intoViewWithAccessibilityLabel:, but it can be unreliable for long strings. This method is a short cut to directly call the setText: property if available. It will fail if the selected element does not respond to setText:
+ @param text The text to enter.
+ @param label The accessibility label of the element to type into.
+ @result A configured test step.
+ */
++ (id)stepToDirectlySetText:(NSString *)text intoViewWithAccessibilityLabel:(NSString *)label;
+
+/*!
  @method stepToEnterText:intoViewWithAccessibilityLabel:
  @abstract A step that enters text into a particular view in the view hierarchy.
  @discussion The view or accessibility element with the given label is searched for in the view hierarchy. If the element isn't found or isn't currently tappable, then the step will attempt to wait until it is. Once the view is present and tappable, a tap event is simulated in the center of the view or element, then text is entered into the view by simulating taps on the appropriate keyboard keys.
