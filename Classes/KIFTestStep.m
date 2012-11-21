@@ -362,23 +362,34 @@ typedef CGPoint KIFDisplacement;
         UIView *view = [UIAccessibilityElement viewContainingAccessibilityElement:element];
         KIFTestWaitCondition(view, error, @"Cannot find view with accessibility label \"%@\"", label);
         
+        CGRect elementFrame = [view.window convertRect:element.accessibilityFrame toView:view];
+        CGPoint tappablePointInElement = [view tappablePointInRect:elementFrame];
+        
+        // This is mostly redundant of the test in _accessibilityElementWithLabel:
+        KIFTestCondition(!isnan(tappablePointInElement.x), error, @"The element with accessibility label %@ is not tappable", label);
+        [view tapAtPoint:tappablePointInElement];
+        
+        KIFTestWaitCondition([view isDescendantOfFirstResponder], error, @"Failed to make the view with accessibility label \"%@\" the first responder. First responder is %@", label, [[[UIApplication sharedApplication] keyWindow] firstResponder]);
+        
+        // Wait for the keyboard
+        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.5, false);
+        
         id textThing = (id)view;
         if ([textThing respondsToSelector:@selector(text)]) {
-            [textThing setText:text];
-            NSString *actual = [textThing performSelector:@selector(text)];
-            KIFTestCondition([actual isEqualToString:text], error, @"Failed to actually enter text \"%@\" in field; instead, it was \"%@\"", text, actual);
+            //Enter everything but the last character directly
+            NSString* textMissingLastCharacter = [text substringToIndex:text.length - 1];
+            [textThing setText:textMissingLastCharacter];
             
-            if ([textThing isKindOfClass:[UITextView class]]) {
-                if ([[(UITextView *)textThing delegate] respondsToSelector:@selector(textViewDidChange:)]) {
-                    [[(UITextView *)textThing delegate] performSelector:@selector(textViewDidChange:) withObject:textThing];
-                }
-                [[NSNotificationCenter defaultCenter] postNotificationName:UITextViewTextDidChangeNotification object:textThing];
-            }
-            else if ([textThing isKindOfClass:[UITextField class]]) {
-                if ([[(UITextField *)textThing delegate] respondsToSelector:@selector(textFieldDidEndEditing:)]) {
-                    [[(UITextField *)textThing delegate] performSelector:@selector(textFieldDidEndEditing:) withObject:textThing];
-                }
-                [[NSNotificationCenter defaultCenter] postNotificationName:UITextFieldTextDidEndEditingNotification object:textThing];
+            //then enter the last character using the keyboard to ensure delegate methods fire
+            NSString* textLastCharacter = [text substringFromIndex:text.length - 1];
+            [self _enterCharacter:textLastCharacter];
+            
+            // This is probably a UITextField- or UITextView-ish view, so make sure it worked
+            if ([view respondsToSelector:@selector(text)]) {
+                // We trim \n and \r because they trigger the return key, so they won't show up in the final product on single-line inputs
+                NSString *expected = [text stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+                NSString *actual = [[view performSelector:@selector(text)] stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+                KIFTestCondition([actual isEqualToString:expected], error, @"Failed to actually enter text \"%@\" in field; instead, it was \"%@\"", text, actual);
             }
         } else {
             KIFTestCondition(NO, error, @"Failed to find key for character \"%@\"", text);
