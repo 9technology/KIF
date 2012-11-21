@@ -385,12 +385,8 @@ typedef CGPoint KIFDisplacement;
             [self _enterCharacter:textLastCharacter];
             
             // This is probably a UITextField- or UITextView-ish view, so make sure it worked
-            if ([view respondsToSelector:@selector(text)]) {
-                // We trim \n and \r because they trigger the return key, so they won't show up in the final product on single-line inputs
-                NSString *expected = [text stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
-                NSString *actual = [[view performSelector:@selector(text)] stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
-                KIFTestCondition([actual isEqualToString:expected], error, @"Failed to actually enter text \"%@\" in field; instead, it was \"%@\"", text, actual);
-            }
+            NSString *actual = [textThing text];
+            KIFTestWaitCondition([self compareText:actual toExpected:text], error, @"Failed to actually enter text \"%@\" in field; instead, it was \"%@\"", text, actual);
         } else {
             KIFTestCondition(NO, error, @"Failed to find key for character \"%@\"", text);
         }
@@ -445,10 +441,8 @@ typedef CGPoint KIFDisplacement;
         
         // This is probably a UITextField- or UITextView-ish view, so make sure it worked
         if ([view respondsToSelector:@selector(text)]) {
-            // We trim \n and \r because they trigger the return key, so they won't show up in the final product on single-line inputs
-            NSString *expected = [expectedResult ? expectedResult : text stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
-            NSString *actual = [[view performSelector:@selector(text)] stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
-            KIFTestCondition([actual isEqualToString:expected], error, @"Failed to actually enter text \"%@\" in field; instead, it was \"%@\"", text, actual);
+            NSString *actual = [view performSelector:@selector(text)];
+            KIFTestWaitCondition([self compareText:actual toExpected:text], error, @"Failed to actually enter text \"%@\" in field; instead, it was \"%@\"", text, actual);
         }
         
         return KIFTestStepResultSuccess;
@@ -1058,6 +1052,14 @@ typedef CGPoint KIFDisplacement;
         default:
             return CGPointZero;
     }
+}
+
++ (BOOL)compareText:(NSString *)actualText toExpected:(NSString *)expectedText
+{
+    // We trim \n and \r because they trigger the return key, so they won't show up in the final product on single-line inputs
+    NSString *expected = [expectedText stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+    NSString *actual = [actualText stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+    return [actual isEqualToString:expected];
 }
 
 @end
